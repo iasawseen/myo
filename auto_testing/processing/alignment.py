@@ -150,5 +150,3 @@ class Alignment:
                 raise ValueError('Wrong action in backtrack')
 
         return alignment_left, alignment_right
-
-

@@ -1,6 +1,10 @@
 import pickle
+import numpy as np
 import os
 from copy import deepcopy
+from .alignment import Alignment
+from ..utils.utility import flatten
+from multiprocessing import Pool
 
 
 def _clear_terminal_nones_from_iterables(*arrays):
@@ -81,20 +85,139 @@ def _trim_to_sync(fst, snd, eps, access_fn=lambda x, i: x[i]):
     return fst_copy, snd_copy
 
 
+def _get_consecutive_none_lengths(iterable):
+    none_lengths = []
+    empty_start = 0
+    empty_open = False
+
+    for i, el in enumerate(iterable):
+        if el is None:
+            if not empty_open:
+                empty_open = True
+                empty_start = i
+        else:
+            if empty_open:
+                empty_open = False
+                empty_end = i
+                none_lengths.append(empty_end - empty_start)
+
+    if empty_open:
+        none_lengths.append(len(iterable) - empty_start)
+
+    return none_lengths
+
+
+def _validate(iterable, max_nones_limit=10, ave_nones_limit=4):
+    none_lengths = _get_consecutive_none_lengths(iterable)
+    if len(none_lengths) == 0:
+        return True
+    return max(none_lengths) <= max_nones_limit and sum(none_lengths) / len(none_lengths) < ave_nones_limit
+
+
+def _compress_angles(angles):
+    if angles is None:
+        return
+    compressed = list()
+    compressed.append(angles[0])
+
+    for i in range(1, len(angles)):
+        compressed.append(angles[i][0])
+        compressed.append(angles[i][1][0])
+        compressed.append(angles[i][2][0])
+
+    return compressed
+
+
+def _fill_angles_gap(angles, start, end):
+    left_bound = angles[start - 1]
+    right_bound = angles[end]
+    length = end - start
+
+    def get_filler(left, right, filler_length):
+        assert len(left) == len(right)
+
+        length_with_over = filler_length + 2
+
+        linspaces = [np.linspace(left[i], right[i], length_with_over) for i in range(len(left))]
+        filler = [[linspace[i] for linspace in linspaces] for i in range(length_with_over)][1:-1]
+
+        assert filler_length == len(filler)
+
+        return filler
+
+    angles_filler = get_filler(left_bound, right_bound, length)
+    angles[start: end] = angles_filler
+
+
+def _interpolate_angles(angles):
+    assert len(angles) != 0
+    assert angles[0] is not None and angles[-1] is not None
+
+    empty_start = 0
+    empty_open = False
+
+    for i, el in enumerate(angles):
+        if el is None:
+            if not empty_open:
+                empty_open = True
+                empty_start = i
+        else:
+            if empty_open:
+                empty_open = False
+                empty_end = i
+                _fill_angles_gap(angles, empty_start, empty_end)
+
+    return angles
+
+
 def pre_process_single(file_path):
     with open(file_path, 'rb') as handle:
         emg_data, orientation_data, angles = pickle.load(handle)
 
     while True:
-        emg_data, orientation_data = _trim_to_sync(emg_data, orientation_data, 16, access_fn=lambda x, i: x[i][0])
         emg_length = len(emg_data)
         emg_data, angles = _trim_to_sync(emg_data, angles, 16, access_fn=lambda x, i: x[i][0])
 
         if emg_length == len(emg_data):
             break
 
+    alignment = Alignment()
 
-def pre_process(file_paths):
-    for file_path in file_paths:
-        pass
+    emg_data_aligned_wt_angles, angles = alignment.align_fast(emg_data, angles, 10,
+                                                              access_fn=lambda x, i: x[i][0], width=8)
+
+    assert len(emg_data) == len(emg_data_aligned_wt_angles), \
+        '{} has emg and angles with different lengths after alignment'.format(file_path)
+
+    emg_data, angles = _clear_terminal_nones_from_iterables(emg_data, angles)
+
+    assert _validate(angles, max_nones_limit=10, ave_nones_limit=2), \
+        '{} did not pass validation'.format(file_path)
+
+    emg_data = [el[1] if el is not None else el for el in emg_data]
+    angles = [list(flatten(_compress_angles(el[1]))) if el is not None else el for el in angles]
+
+    interpolated_angles = _interpolate_angles(angles)
+
+    x = np.array(emg_data)
+    y = np.array(interpolated_angles)
+
+    parent_dir, filename = os.path.split(file_path)
+
+    new_parent_dir = parent_dir.replace('raw', 'processed')
+    if not os.path.exists(new_parent_dir):
+        os.mkdir(new_parent_dir)
+
+    new_filename = filename.replace('raw', 'processed')
+    new_file_path = os.path.join(new_parent_dir, new_filename)
+
+    with open(new_file_path, 'wb') as handle:
+        pickle.dump((x, y), handle)
+
+
+def launch_pre_process(file_paths):
+    with Pool(processes=os.cpu_count()) as pool:
+        pool.map(pre_process_single, file_paths)
+
+
 

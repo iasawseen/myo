@@ -3,7 +3,7 @@ import unittest
 from ..processing import alignment
 
 
-class BaseTestAlignment(unittest.TestCase):
+class AlignmentTestCase(unittest.TestCase):
 
     def setUp(self):
         self.alignment = alignment.Alignment()
