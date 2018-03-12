@@ -20,8 +20,8 @@ class StandardRNN(AbstractModel):
         reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.7, verbose=True,
                                       patience=10, min_lr=0.0001)
 
-        self.model.fit(x=x_train, y=x_train, batch_size=batch_size, epochs=num_epochs,
-                       shuffle=True, validation_data=(x_val, x_val), callbacks=[reduce_lr])
+        self.model.fit(x=x_train, y=y_train, batch_size=batch_size, epochs=num_epochs,
+                       shuffle=True, validation_data=(x_val, y_val), callbacks=[reduce_lr])
 
     def predict(self, x):
         return self.model.predict(x)
