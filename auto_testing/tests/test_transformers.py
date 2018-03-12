@@ -132,6 +132,49 @@ class AddWindowToXYTestCase(unittest.TestCase):
         self.assertTrue(equal)
 
 
+class ReshapeXForDilatedTestCase(unittest.TestCase):
+    def test_one_element_in_batch(self):
+        xys = ((np.array([[[1, 2, 3, 4],
+                           [11, 12, 13, 14],
+                           [21, 22, 23, 24]]]),
+                np.array([1]).reshape((1, 1))))
+
+        result = transformers.reshape_x_for_dilated(xys)
+        x_reshaped, _ = result
+
+        x_expected = np.array([[[[1, 2, 3, 4]],
+                                [[11, 12, 13, 14]],
+                                [[21, 22, 23, 24]]]])
+
+        equal = np.allclose(x_expected, x_reshaped)
+        self.assertTrue(equal)
+        self.assertEqual((1, 3, 4), xys[0].shape)
+        self.assertEqual((1, 3, 1, 4), x_expected.shape)
+
+    def test_two_element_in_batch(self):
+        xys = ((np.array([[[1, 2, 3, 4],
+                           [11, 12, 13, 14],
+                           [21, 22, 23, 24]],
+                          [[-1, -2, -3, -4],
+                           [-11, -12, -13, -14],
+                           [-21, -22, -23, -24]]]),
+                np.array([1]).reshape((1, 1))))
+
+        result = transformers.reshape_x_for_dilated(xys)
+        x_reshaped, _ = result
+
+        x_expected = np.array([[[[1, 2, 3, 4]],
+                                [[11, 12, 13, 14]],
+                                [[21, 22, 23, 24]]],
+                               [[[-1, -2, -3, -4]],
+                                [[-11, -12, -13, -14]],
+                                [[-21, -22, -23, -24]]]])
+        equal = np.allclose(x_expected, x_reshaped)
+        self.assertTrue(equal)
+        self.assertEqual((2, 3, 4), xys[0].shape)
+        self.assertEqual((2, 3, 1, 4), x_expected.shape)
+
+
 class CompactXYTestCase(unittest.TestCase):
     def test_one_column_ratio2(self):
         x = np.array([[1],

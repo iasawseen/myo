@@ -37,5 +37,5 @@ def test_model(pack):
     mse = mean_squared_error(y_test, y_test_pred)
     mae = mean_absolute_error(y_test, y_test_pred)
 
-    return mse, mae
+    return {'mse': mse, 'mae': mae}
 

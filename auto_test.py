@@ -3,7 +3,7 @@ import argparse
 from auto_testing.processing.preprocess import launch_pre_process
 from auto_testing.utils import utility
 from auto_testing.processing import transformers
-from auto_testing.models import core, rnn
+from auto_testing.models import core, rnn, cnn
 from functools import partial
 
 from sys import platform
@@ -33,11 +33,12 @@ def generate_file_paths(dir_name):
     return filtered_file_paths
 
 
-def transform(file_paths):
+def transform_file_paths(file_paths):
     transform_fns = (
         utility.read_from_file_path,
         partial(transformers.average_filter_angles, window=8),
         partial(transformers.add_window_to_xy, window=64),
+        transformers.reshape_x_for_dilated,
         partial(transformers.split_by_chunks, val_test_size=0.25, chunks=20, overlapping=64),
         partial(transformers.compact_iterable, ratio=4)
     )
@@ -53,7 +54,7 @@ def transform(file_paths):
 
 
 def train_test(xys):
-    train_fn = partial(core.train_model, model_cls=rnn.StandardRNN, batch_size=1024, num_epochs=64)
+    train_fn = partial(core.train_model, model_cls=cnn.DilatedCNN, batch_size=1024, num_epochs=16)
     test_metrics = utility.pipe(xys, funcs=(train_fn, core.test_model))
     return test_metrics
 
@@ -61,8 +62,8 @@ def train_test(xys):
 def main(args):
     if args.pre_process:
         utility.pipe(RAW_DATA_DIR, funcs=(utility.list_data_file_paths, launch_pre_process))
-    metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(generate_file_paths, transform, train_test))
-    print('metrics: {}'.format(metrics))
+    metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(generate_file_paths, transform_file_paths, train_test))
+    print('mse: {mse}, mae: {mae}'.format(mse=metrics['mse'], mae=metrics['mae']))
 
 
 if __name__ == '__main__':

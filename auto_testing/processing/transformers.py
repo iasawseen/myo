@@ -12,6 +12,12 @@ def average_filter(array, window, mode='same'):
     return np.concatenate(columns, axis=1)
 
 
+def rectify_x(xy):
+    x, y = xy
+    x_rectified = np.abs(x)
+    return x_rectified, y
+
+
 def average_filter_emgs_angles(xy, emgs_window=4, angles_window=4):
     x, y = xy
     x_filtered = average_filter(x, window=emgs_window)
@@ -33,6 +39,12 @@ def add_window_to_xy(xy, window):
         y_windowed.append(y[x_indices[-1], :])
 
     return np.array(x_windowed), np.array(y_windowed)
+
+
+def reshape_x_for_dilated(xy):
+    x, y = xy
+    x_reshaped = np.reshape(x, newshape=(x.shape[0], x.shape[1], 1, x.shape[2]))
+    return x_reshaped, y
 
 
 def compact_iterable(iterable, ratio):
