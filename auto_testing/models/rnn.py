@@ -1,4 +1,4 @@
-from .abstract_model import AbstractModel
+from .core import AbstractModel
 from keras.layers import Input, Dense, Dropout, BatchNormalization, CuDNNGRU, Flatten
 from keras.models import Model, load_model
 from keras import regularizers, optimizers

@@ -145,7 +145,7 @@ class CompactXYTestCase(unittest.TestCase):
                       [6],
                       [8]])
 
-        x_compacted, y_compacted = transformers.compact_xy((x, y), ratio=2)
+        x_compacted, y_compacted = transformers.compact_iterable((x, y), ratio=2)
 
         x_expected = np.array([[1],
                                [5],
@@ -169,7 +169,7 @@ class CompactXYTestCase(unittest.TestCase):
                       [6],
                       [8]])
 
-        x_compacted, y_compacted = transformers.compact_xy((x, y), ratio=3)
+        x_compacted, y_compacted = transformers.compact_iterable((x, y), ratio=3)
 
         x_expected = np.array([[1],
                                [7]])

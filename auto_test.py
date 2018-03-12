@@ -1,8 +1,8 @@
 import os
 from auto_testing.processing.preprocess import launch_pre_process
-# from auto_testing.utils.utility import list_data_file_paths, is_file_path_valid, filter_file_paths, pipe
 from auto_testing.utils import utility
 from auto_testing.processing import transformers
+from auto_testing.models import core, rnn
 from functools import partial
 
 
@@ -10,7 +10,7 @@ RAW_DATA_DIR = '..\\raw_data'
 PROCESSED_DATA_DIR = '..\\processed_data'
 
 
-def filter_dir(dir_name):
+def generate_file_paths(dir_name):
     filter_fns = (
         partial(utility.is_file_path_valid, code_index=0, valid_codes=['00']),
         partial(utility.is_file_path_valid, code_index=1, valid_codes=['0']),
@@ -41,5 +41,12 @@ def transform(file_paths):
     return result
 
 
+def train_test(xys):
+    train_fn = partial(core.train_model, model_cls=rnn.StandardRNN, batch_size=1024, num_epochs=64)
+    test_metrics = utility.pipe(xys, funcs=(train_fn, core.test_model))
+    return test_metrics
+
+
 if __name__ == '__main__':
-    utility.pipe(PROCESSED_DATA_DIR, funcs=(filter_dir, transform))
+    metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(generate_file_paths, transform, train_test))
+    print('metrics: {}'.format(metrics))
