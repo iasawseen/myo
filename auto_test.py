@@ -37,10 +37,9 @@ def transform(file_paths):
     )
 
     result = utility.pipe(file_paths, funcs=funcs)
-    
+
     return result
 
 
 if __name__ == '__main__':
-    transform(filter_dir(PROCESSED_DATA_DIR))
-
+    utility.pipe(PROCESSED_DATA_DIR, funcs=(filter_dir, transform))
