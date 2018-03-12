@@ -49,7 +49,7 @@ def train_test(xys):
 
 
 def main(args):
-    if args.preprocess:
+    if args.pre_process:
         utility.pipe(RAW_DATA_DIR, funcs=(utility.list_data_file_paths, launch_pre_process))
     metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(generate_file_paths, transform, train_test))
     print('metrics: {}'.format(metrics))
