@@ -1,4 +1,5 @@
 import os
+import argparse
 from auto_testing.processing.preprocess import launch_pre_process
 from auto_testing.utils import utility
 from auto_testing.processing import transformers
@@ -47,6 +48,17 @@ def train_test(xys):
     return test_metrics
 
 
-if __name__ == '__main__':
+def main(args):
+    if args.preprocess:
+        utility.pipe(RAW_DATA_DIR, funcs=(utility.list_data_file_paths, launch_pre_process))
     metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(generate_file_paths, transform, train_test))
     print('metrics: {}'.format(metrics))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Testing hypothesis')
+    parser.add_argument('--pre_process', type=bool, default=False, help='')
+
+    arguments = parser.parse_args()
+    main(arguments)
+
