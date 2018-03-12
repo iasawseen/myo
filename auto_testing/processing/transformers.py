@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 
 def average_filter(array, window, mode='same'):
@@ -34,12 +35,71 @@ def add_window_to_xy(xy, window):
     return np.array(x_windowed), np.array(y_windowed)
 
 
-def compact_xy(xy, ratio):
-    x, y = xy
+def compact_iterable(iterable, ratio):
+    result = []
     offset = ratio
-    indices_to_save = list(range(0, x.shape[0], offset))
-    indices_to_delete = list(set(range(x.shape[0])) - set(indices_to_save))
-    x_compacted = np.delete(x, indices_to_delete, axis=0)
-    y_compacted = np.delete(y, indices_to_delete, axis=0)
-    return x_compacted, y_compacted
+    length = iterable[0].shape[0]
+    indices_to_save = list(range(0, length, offset))
+    indices_to_delete = list(set(range(length)) - set(indices_to_save))
+    for el in iterable:
+        result.append(np.delete(el, indices_to_delete, axis=0))
+    return result
 
+
+def process_iterable(iterable, func):
+    results = [func(el) for el in iterable]
+    return results
+
+
+def merge_xys(xys):
+    # xys = [(x1, y1, z1), (x2, y2, z2), (x3, y3, z3)]
+    result = [[] for _ in range(len(xys[0]))]
+
+    for xy in xys:
+        for index, element in enumerate(xy):
+            result[index].append(element)
+
+    merged = [np.concatenate(iterable) for iterable in result]
+
+    return merged
+
+
+def split_by_chunks(xy, val_test_size=0.25, chunks=20, overlapping=32):
+    x, y = xy
+    chunk_size = int(x.shape[0] * val_test_size / chunks)
+    offset = int(x.shape[0] / chunks)
+    borders = []
+    x_vals = []
+    y_vals = []
+    x_tests = []
+    y_tests = []
+
+    for i in range(0, x.shape[0], offset):
+        start_index = random.randint(i, i + offset - chunk_size)
+        end_index = start_index + chunk_size
+        borders.append((start_index, end_index))
+
+    shuffled_borders = list(borders)
+    random.shuffle(shuffled_borders)
+
+    for border_pair in borders[: len(shuffled_borders) // 2]:
+        x_vals.append(x[border_pair[0] + overlapping: border_pair[1] - overlapping, :])
+        y_vals.append(y[border_pair[0] + overlapping: border_pair[1] - overlapping, :])
+
+    for border_pair in borders[len(shuffled_borders) // 2:]:
+        x_tests.append(x[border_pair[0] + overlapping: border_pair[1] - overlapping, :])
+        y_tests.append(y[border_pair[0] + overlapping: border_pair[1] - overlapping, :])
+
+    x_val = np.concatenate(x_vals)
+    y_val = np.concatenate(y_vals)
+    x_test = np.concatenate(x_tests)
+    y_test = np.concatenate(y_tests)
+
+    indices_to_delete = []
+
+    for border_pair in borders:
+        indices_to_delete.extend(list(range(border_pair[0], border_pair[1])))
+    x_train = np.delete(x, indices_to_delete, axis=0)
+    y_train = np.delete(y, indices_to_delete, axis=0)
+
+    return x_train, x_val, x_test, y_train, y_val, y_test

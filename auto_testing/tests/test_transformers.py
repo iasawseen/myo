@@ -178,3 +178,45 @@ class CompactXYTestCase(unittest.TestCase):
 
         equal = np.allclose(x_expected, x_compacted) and np.allclose(y_expected, y_compacted)
         self.assertTrue(equal)
+
+
+class ProcessIterableTestCase(unittest.TestCase):
+    def test_simple(self):
+        result = transformers.process_iterable(list(range(10)), lambda x: x*2)
+        self.assertEqual(list(range(0, 20, 2)), result)
+
+
+class MergeXYsTestCase(unittest.TestCase):
+    def test_with_length_one(self):
+        xys = [(np.arange(0, 10).reshape((10, 1)),
+                np.arange(10, 20).reshape((10, 1)))]
+
+        result = transformers.merge_xys(xys)
+
+        equal = np.allclose(xys, result)
+        self.assertTrue(equal)
+
+    def test_with_length_two(self):
+        xys = [(np.arange(0, 10).reshape((10, 1)),
+                np.arange(20, 30).reshape((10, 1))),
+               (np.arange(10, 20).reshape((10, 1)),
+                np.arange(30, 40).reshape((10, 1)))]
+
+        result = transformers.merge_xys(xys)
+        equal = np.allclose((np.arange(0, 20).reshape(20, 1),
+                             np.arange(20, 40).reshape(20, 1)), result)
+        self.assertTrue(equal)
+
+    def test_xyz_with_length_two(self):
+        xys = [(np.arange(0, 10).reshape((10, 1)),
+                np.arange(20, 30).reshape((10, 1)),
+                np.arange(40, 50).reshape((10, 1))),
+               (np.arange(10, 20).reshape((10, 1)),
+                np.arange(30, 40).reshape((10, 1)),
+                np.arange(50, 60).reshape((10, 1)))]
+
+        result = transformers.merge_xys(xys)
+        equal = np.allclose((np.arange(0, 20).reshape(20, 1),
+                             np.arange(20, 40).reshape(20, 1),
+                             np.arange(40, 60).reshape(20, 1)), result)
+        self.assertTrue(equal)

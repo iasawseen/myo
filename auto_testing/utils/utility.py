@@ -1,6 +1,17 @@
 import collections
 import numpy as np
+import pickle
 import os
+
+
+def pipe(initial_data, funcs=None):
+    if funcs is None:
+        funcs = []
+    result_data = initial_data
+    for index, func in enumerate(funcs):
+        result_data = func(result_data)
+
+    return result_data
 
 
 def flatten(iterable):
@@ -34,9 +45,11 @@ def filter_file_paths(file_paths, filter_fn):
     return filtered_file_paths
 
 
-def pipe(initial_data, *funcs):
-    result_data = initial_data
-    for index, func in enumerate(funcs):
-        result_data = func(result_data)
+def read_from_file_path(file_path):
+    with open(file_path, 'rb') as handle:
+        return pickle.load(handle)
 
-    return result_data
+
+def write_to_file_path(file_path, data):
+    with open(file_path, 'wb') as handle:
+        pickle.dump(data, handle)

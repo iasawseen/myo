@@ -3,7 +3,7 @@ import numpy as np
 import os
 from copy import deepcopy
 from .alignment import Alignment
-from ..utils.utility import flatten
+from ..utils.utility import flatten, read_from_file_path, write_to_file_path
 from multiprocessing import Pool
 
 
@@ -171,8 +171,7 @@ def _interpolate_angles(angles):
 
 
 def pre_process_single(file_path):
-    with open(file_path, 'rb') as handle:
-        emg_data, orientation_data, angles = pickle.load(handle)
+    emg_data, orientation_data, angles = read_from_file_path(file_path)
 
     while True:
         emg_length = len(emg_data)
@@ -211,8 +210,7 @@ def pre_process_single(file_path):
     new_filename = filename.replace('raw', 'processed')
     new_file_path = os.path.join(new_parent_dir, new_filename)
 
-    with open(new_file_path, 'wb') as handle:
-        pickle.dump((x, y), handle)
+    write_to_file_path(new_file_path, (x, y))
 
 
 def launch_pre_process(file_paths):
