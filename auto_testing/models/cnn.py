@@ -49,7 +49,7 @@ class DilatedCNN(AbstractModel):
             logits = tf.nn.convolution(input_tensor, conv_filter, padding='SAME',
                                        strides=strides[1: 3], dilation_rate=dilations[1: 3])
 
-            activations = tf.nn.selu(logits + b)
+            activations = tf.nn.relu(logits + b)
             return activations
 
     def add_normalizer(self, input_tensor, drop=False):
@@ -71,7 +71,7 @@ class DilatedCNN(AbstractModel):
         x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 4, 1, 32])
         x = tf.reshape(x, [-1, 4 * 32])
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = slim.fully_connected(x, 256, activation_fn=tf.nn.selu, scope='fc1')
+        x = slim.fully_connected(x, 256, activation_fn=tf.nn.relu, scope='fc1')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         self.predictions = slim.fully_connected(x, self.pred_length,
                                                 activation_fn=None, scope='final')
