@@ -43,9 +43,13 @@ class DilatedCNN(AbstractModel):
             conv_filter = tf.get_variable(scope_name + 'weight', filter_size,
                                           initializer=tf.contrib.layers.xavier_initializer())
             b = tf.get_variable(scope_name + 'bias', filter_size[-1], initializer=tf.random_normal_initializer())
-            logits = tf.nn.conv2d(input_tensor, conv_filter, strides=strides, padding='SAME', dilations=dilations)
 
-            activations = tf.nn.relu(logits + b)
+            # logits = tf.nn.conv2d(input_tensor, conv_filter, strides=strides, padding='SAME', dilations=dilations)
+
+            logits = tf.nn.convolution(input_tensor, conv_filter, padding='SAME',
+                                       strides=strides[1: 3], dilation_rate=dilations[1: 3])
+
+            activations = tf.nn.selu(logits + b)
             return activations
 
     def add_normalizer(self, input_tensor, drop=False):
@@ -56,15 +60,19 @@ class DilatedCNN(AbstractModel):
 
     def build(self):
         x = self.get_dilated_conv(self.data, filter_size=(6, 1, 8, 32), dilations=(1, 1, 1, 1), scope_name='conv1')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 2, 1, 1), scope_name='conv2')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 4, 1, 1), scope_name='conv3')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 8, 1, 1), scope_name='conv4')
-        x = self.get_dilated_conv(x, filter_size=(4, 1, 32, 32), dilations=(1, 16, 1, 1), scope_name='conv5')
-        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 1, 1, 32])
-        x = tf.reshape(x, [-1, 1 * 32])
-        x = self.add_normalizer(x, drop=True)
-        x = slim.fully_connected(x, 128, activation_fn=tf.nn.tanh, scope='fc1')
-        x = self.add_normalizer(x, drop=True)
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 16, 1, 1), scope_name='conv5')
+        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 4, 1, 32])
+        x = tf.reshape(x, [-1, 4 * 32])
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        x = slim.fully_connected(x, 256, activation_fn=tf.nn.selu, scope='fc1')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         self.predictions = slim.fully_connected(x, self.pred_length,
                                                 activation_fn=None, scope='final')
 
@@ -93,31 +101,30 @@ class DilatedCNN(AbstractModel):
             x_, y_ = shuffle(x_train, y_train)
 
             start_time = time.time()
+            loss_sum = 0
+            loss_qty = 0
             for i in range(0, x_.shape[0], batch_size):
                 fd = {self.data: x_[i: i + batch_size, :, :, :],
                       self.target: y_[i: i + batch_size, :],
                       self.lr: get_lr(epoch), self.keep_prob: 0.5,
                       self.norm: True}
                 loss, _ = self.sess.run([self.loss, self.train_op], feed_dict=fd)
-                print('\r', 'batch {} was processed with loss: {:.3f}'.format(i // batch_size, loss), end='')
-            print('\r', end='')
+                loss_sum += loss
+                loss_qty += 1
 
-            fd_train = {self.data: x_train,
-                        self.target: y_train,
-                        self.keep_prob: 1.0,
-                        self.norm: False}
+            train_mse = loss_sum / loss_qty
+
             fd_val = {self.data: x_val,
                       self.target: y_val,
                       self.keep_prob: 1.0,
                       self.norm: False}
 
-            train_mse, train_mae = self.sess.run([self.loss, self.mae], feed_dict=fd_train)
             val_mse, train_mae = self.sess.run([self.loss, self.mae], feed_dict=fd_val)
 
-            print('epoch {:4d}: train mse: {:.3f}, train mae: {:.3f},'
+            print('epoch {:4d}: train mse: {:.3f}, '
                   'val mse: {:.3f}, val mae: {:.3f}. '
                   'Elapsed time {:.1f} s'.format(epoch,
-                                                 train_mse, train_mae,
+                                                 train_mse,
                                                  val_mse, train_mae,
                                                  time.time() - start_time))
 
