@@ -6,9 +6,19 @@ from auto_testing.processing import transformers
 from auto_testing.models import core, rnn
 from functools import partial
 
+from sys import platform
 
-RAW_DATA_DIR = '..\\raw_data'
-PROCESSED_DATA_DIR = '..\\processed_data'
+
+RAW_DATA_DIR = '..{}raw_data'
+PROCESSED_DATA_DIR = '..{}processed_data'
+
+
+if platform == 'win32':
+    RAW_DATA_DIR = RAW_DATA_DIR.format('\\')
+    PROCESSED_DATA_DIR = PROCESSED_DATA_DIR.format('\\')
+else:
+    RAW_DATA_DIR = RAW_DATA_DIR.format('/')
+    PROCESSED_DATA_DIR = PROCESSED_DATA_DIR.format('/')
 
 
 def generate_file_paths(dir_name):
