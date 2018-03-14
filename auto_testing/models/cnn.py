@@ -44,8 +44,6 @@ class DilatedCNN(AbstractModel):
                                           initializer=tf.contrib.layers.xavier_initializer())
             b = tf.get_variable(scope_name + 'bias', filter_size[-1], initializer=tf.random_normal_initializer())
 
-            # logits = tf.nn.conv2d(input_tensor, conv_filter, strides=strides, padding='SAME', dilations=dilations)
-
             logits = tf.nn.convolution(input_tensor, conv_filter, padding='SAME',
                                        strides=strides[1: 3], dilation_rate=dilations[1: 3])
 
@@ -61,17 +59,19 @@ class DilatedCNN(AbstractModel):
     def build(self):
         x = self.get_dilated_conv(self.data, filter_size=(6, 1, 8, 32), dilations=(1, 1, 1, 1), scope_name='conv1')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 2, 1, 1), scope_name='conv2')
+        x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 64), dilations=(1, 2, 1, 1), scope_name='conv2')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 4, 1, 1), scope_name='conv3')
+        x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 4, 1, 1), scope_name='conv3')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 8, 1, 1), scope_name='conv4')
+        x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 8, 1, 1), scope_name='conv4')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 32), dilations=(1, 16, 1, 1), scope_name='conv5')
-        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 4, 1, 32])
-        x = tf.reshape(x, [-1, 4 * 32])
+        x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 128), dilations=(1, 16, 1, 1), scope_name='conv5')
+        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        # x = self.get_dilated_conv(x, filter_size=(4, 1, 32, 32), dilations=(1, 32, 1, 1), scope_name='conv6')
+        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 6, 1, 128])
+        x = tf.reshape(x, [-1, 6 * 128])
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = slim.fully_connected(x, 256, activation_fn=tf.nn.relu, scope='fc1')
+        x = slim.fully_connected(x, 512, activation_fn=tf.nn.relu, scope='fc1')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         self.predictions = slim.fully_connected(x, self.pred_length,
                                                 activation_fn=None, scope='final')
@@ -91,9 +91,9 @@ class DilatedCNN(AbstractModel):
         self.sess.run(tf.global_variables_initializer())
 
         def get_lr(epoch_index):
-            if epoch_index < 128:
+            if epoch_index < 64:
                 return .001
-            if epoch_index < 256:
+            if epoch_index < 96:
                 return .0007
             return .0005
 

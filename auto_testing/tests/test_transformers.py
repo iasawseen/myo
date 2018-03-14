@@ -225,7 +225,7 @@ class CompactXYTestCase(unittest.TestCase):
 
 class ProcessIterableTestCase(unittest.TestCase):
     def test_simple(self):
-        result = transformers.process_iterable(list(range(10)), lambda x: x*2)
+        result = transformers.process_iterable(list(range(10)), lambda x: x * 2)
         self.assertEqual(list(range(0, 20, 2)), result)
 
 

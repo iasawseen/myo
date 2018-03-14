@@ -1,9 +1,7 @@
-import os
 import argparse
-from auto_testing.processing.preprocess import launch_pre_process
+from auto_testing.processing import transformers, preprocess
 from auto_testing.utils import utility
-from auto_testing.processing import transformers
-from auto_testing.models import core, rnn, cnn
+from auto_testing.models import cnn, core
 from functools import partial
 
 from sys import platform
@@ -36,10 +34,12 @@ def generate_file_paths(dir_name):
 def transform_file_paths(file_paths):
     transform_fns = (
         utility.read_from_file_path,
+        # transformers.rectify_x,
+        # partial(transformers.average_filter_emgs_angles, emgs_window=16, angles_window=8),
         partial(transformers.average_filter_angles, window=8),
         partial(transformers.add_window_to_xy, window=96),
         transformers.reshape_x_for_dilated,
-        partial(transformers.split_by_chunks, val_test_size=0.25, chunks=10, overlapping=96),
+        partial(transformers.split_by_chunks, val_test_size=0.25, chunks=10, overlapping=128),
         partial(transformers.compact_iterable, ratio=4)
     )
 
@@ -54,15 +54,15 @@ def transform_file_paths(file_paths):
 
 
 def train_test(xys):
-    train_fn = partial(core.train_model, model_cls=cnn.DilatedCNN, batch_size=1024, num_epochs=64)
+    train_fn = partial(core.train_model, model_cls=cnn.DilatedCNN, batch_size=256, num_epochs=64)
     test_metrics = utility.pipe(xys, funcs=(train_fn, core.test_model))
     return test_metrics
 
 
 def main(args):
     if args.pre_process:
-        utility.pipe(RAW_DATA_DIR, funcs=(utility.list_data_file_paths, launch_pre_process))
-    metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(generate_file_paths, transform_file_paths, train_test))
+        utility.pipe(RAW_DATA_DIR, funcs=(utility.list_data_file_paths, preprocess.launch_pre_process))
+    metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(utility.list_data_file_paths, transform_file_paths, train_test))
     print('mse: {mse}, mae: {mae}'.format(mse=metrics['mse'], mae=metrics['mae']))
 
 

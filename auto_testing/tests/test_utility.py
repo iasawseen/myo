@@ -64,7 +64,7 @@ class PipeTestCase(unittest.TestCase):
 
     def test_not_emtpy_funcs(self):
         init_data = 1
-        result = utility.pipe(init_data, [lambda x: x + 1, lambda x: x**2])
+        result = utility.pipe(init_data, [lambda x: x + 1, lambda x: x ** 2])
         self.assertEqual(4, result)
 
     def test_multiple_output_funcs(self):
