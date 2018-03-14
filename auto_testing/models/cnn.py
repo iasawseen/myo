@@ -3,10 +3,15 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import time
+import os
 
 from .core import AbstractModel
 from sklearn.utils import shuffle, resample
 from tensorflow.contrib.layers import batch_norm
+
+from sys import platform
+if not platform == 'win32':
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 class DilatedCNN(AbstractModel):
@@ -38,14 +43,14 @@ class DilatedCNN(AbstractModel):
         self.norm = tf.placeholder(tf.bool)
 
     @staticmethod
-    def get_dilated_conv(input_tensor, filter_size, strides=(1, 1, 1, 1), dilations=(1, 1, 1, 1), scope_name=None):
+    def get_dilated_conv(input_tensor, filter_size, strides=(1, 1), dilations=(1, 1), scope_name=None):
         with tf.name_scope(scope_name):
             conv_filter = tf.get_variable(scope_name + 'weight', filter_size,
                                           initializer=tf.contrib.layers.xavier_initializer())
             b = tf.get_variable(scope_name + 'bias', filter_size[-1], initializer=tf.random_normal_initializer())
 
             logits = tf.nn.convolution(input_tensor, conv_filter, padding='SAME',
-                                       strides=strides[1: 3], dilation_rate=dilations[1: 3])
+                                       strides=strides, dilation_rate=dilations)
 
             activations = tf.nn.relu(logits + b)
             return activations
@@ -56,20 +61,45 @@ class DilatedCNN(AbstractModel):
             return tensor
         return tf.nn.dropout(tensor, keep_prob=self.keep_prob)
 
+    def get_res_unit(self, input_layer, fil_size, filter_sizes=(8, 32, 32),
+                     in_dilation=1, out_dilation=1, scope_name='res_unit'):
+        with tf.name_scope(scope_name):
+            x_in = self.get_dilated_conv(input_layer, filter_size=(fil_size, 1, filter_sizes[0], filter_sizes[1]),
+                                         dilations=(in_dilation, 1), scope_name='conv1')
+            x = tf.nn.dropout(x_in, keep_prob=self.keep_prob)
+            x = self.get_dilated_conv(x, filter_size=(fil_size, 1, filter_sizes[1], filter_sizes[2]),
+                                      dilations=(out_dilation, 1), scope_name='conv2')
+            x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+            x_out = x_in + x
+            return x_out
+
     def build(self):
-        x = self.get_dilated_conv(self.data, filter_size=(6, 1, 8, 32), dilations=(1, 1, 1, 1), scope_name='conv1')
-        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 64), dilations=(1, 2, 1, 1), scope_name='conv2')
-        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 4, 1, 1), scope_name='conv3')
-        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 8, 1, 1), scope_name='conv4')
-        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 128), dilations=(1, 16, 1, 1), scope_name='conv5')
+        # x = self.get_dilated_conv(self.data, filter_size=(6, 1, 8, 32), dilations=(1, 1, 1, 1), scope_name='conv1')
+        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        # x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 64), dilations=(1, 2, 1, 1), scope_name='conv2')
+        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        # x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 4, 1, 1), scope_name='conv3')
+        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        # x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 8, 1, 1), scope_name='conv4')
+        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        # x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 128), dilations=(1, 16, 1, 1), scope_name='conv5')
         # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         # x = self.get_dilated_conv(x, filter_size=(4, 1, 32, 32), dilations=(1, 32, 1, 1), scope_name='conv6')
-        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 6, 1, 128])
-        x = tf.reshape(x, [-1, 6 * 128])
+        x = self.get_res_unit(self.data, fil_size=4, filter_sizes=(8, 32, 32),
+                              in_dilation=1, out_dilation=1, scope_name='conv1')
+        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
+                              in_dilation=2, out_dilation=2, scope_name='conv2')
+        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
+                              in_dilation=4, out_dilation=4, scope_name='conv3')
+        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
+                              in_dilation=8, out_dilation=8, scope_name='conv4')
+        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
+                              in_dilation=16, out_dilation=16, scope_name='conv5')
+        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
+                              in_dilation=32, out_dilation=32, scope_name='conv6')
+
+        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 6, 1, 32])
+        x = tf.reshape(x, [-1, 6 * 32])
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         x = slim.fully_connected(x, 512, activation_fn=tf.nn.relu, scope='fc1')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
