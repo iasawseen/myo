@@ -8,7 +8,7 @@ from sys import platform
 
 
 RAW_DATA_DIR = '..{}input_data_raw'
-PROCESSED_DATA_DIR = '..{}processed_data'
+PROCESSED_DATA_DIR = '..{}input_data_processed'
 
 
 if platform == 'win32':
