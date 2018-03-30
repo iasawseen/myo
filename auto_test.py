@@ -7,7 +7,7 @@ from functools import partial
 from sys import platform
 
 
-RAW_DATA_DIR = '..{}raw_data'
+RAW_DATA_DIR = '..{}input_data_raw'
 PROCESSED_DATA_DIR = '..{}processed_data'
 
 
@@ -63,7 +63,7 @@ def main(args):
     if args.pre_process:
         utility.pipe(RAW_DATA_DIR, funcs=(utility.list_data_file_paths, preprocess.launch_pre_process))
     metrics = utility.pipe(PROCESSED_DATA_DIR, funcs=(utility.list_data_file_paths, transform_file_paths, train_test))
-    print('mse: {mse}, mae: {mae}'.format(mse=metrics['mse'], mae=metrics['mae']))
+    print('test mse: {mse}, test mae: {mae}'.format(mse=metrics['mse'], mae=metrics['mae']))
 
 
 if __name__ == '__main__':

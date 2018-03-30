@@ -8,6 +8,8 @@ import os
 from .core import AbstractModel
 from sklearn.utils import shuffle, resample
 from tensorflow.contrib.layers import batch_norm
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+
 
 from sys import platform
 if not platform == 'win32':
@@ -65,41 +67,46 @@ class DilatedCNN(AbstractModel):
                      in_dilation=1, out_dilation=1, scope_name='res_unit'):
         with tf.name_scope(scope_name):
             x_in = self.get_dilated_conv(input_layer, filter_size=(fil_size, 1, filter_sizes[0], filter_sizes[1]),
-                                         dilations=(in_dilation, 1), scope_name='conv1')
+                                         dilations=(in_dilation, 1), scope_name=scope_name + 'res_conv_1')
             x = tf.nn.dropout(x_in, keep_prob=self.keep_prob)
             x = self.get_dilated_conv(x, filter_size=(fil_size, 1, filter_sizes[1], filter_sizes[2]),
-                                      dilations=(out_dilation, 1), scope_name='conv2')
+                                      dilations=(out_dilation, 1), scope_name=scope_name + 'res_conv_2')
             x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-            x_out = x_in + x
+            x_out = input_layer + x
             return x_out
 
     def build(self):
-        # x = self.get_dilated_conv(self.data, filter_size=(6, 1, 8, 32), dilations=(1, 1, 1, 1), scope_name='conv1')
-        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        # x = self.get_dilated_conv(x, filter_size=(6, 1, 32, 64), dilations=(1, 2, 1, 1), scope_name='conv2')
-        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        # x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 4, 1, 1), scope_name='conv3')
-        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        # x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 64), dilations=(1, 8, 1, 1), scope_name='conv4')
-        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        # x = self.get_dilated_conv(x, filter_size=(6, 1, 64, 128), dilations=(1, 16, 1, 1), scope_name='conv5')
-        # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        # x = self.get_dilated_conv(x, filter_size=(4, 1, 32, 32), dilations=(1, 32, 1, 1), scope_name='conv6')
-        x = self.get_res_unit(self.data, fil_size=4, filter_sizes=(8, 32, 32),
-                              in_dilation=1, out_dilation=1, scope_name='conv1')
-        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
-                              in_dilation=2, out_dilation=2, scope_name='conv2')
-        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
-                              in_dilation=4, out_dilation=4, scope_name='conv3')
-        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
-                              in_dilation=8, out_dilation=8, scope_name='conv4')
-        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
-                              in_dilation=16, out_dilation=16, scope_name='conv5')
-        x = self.get_res_unit(x, fil_size=4, filter_sizes=(32, 32, 32),
-                              in_dilation=32, out_dilation=32, scope_name='conv6')
+        filter_size = 8
 
-        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 6, 1, 32])
-        x = tf.reshape(x, [-1, 6 * 32])
+        x = self.get_dilated_conv(self.data, filter_size=(filter_size, 1, 8, 32), dilations=(1, 1), scope_name='conv1')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        x = self.get_dilated_conv(x, filter_size=(filter_size, 1, 32, 64), dilations=(2, 1), scope_name='conv2')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        x = self.get_dilated_conv(x, filter_size=(filter_size, 1, 64, 64), dilations=(4, 1), scope_name='conv3')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        x = self.get_dilated_conv(x, filter_size=(filter_size, 1, 64, 64), dilations=(8, 1), scope_name='conv4')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        x = self.get_dilated_conv(x, filter_size=(filter_size, 1, 64, 64), dilations=(16, 1), scope_name='conv5')
+        x = tf.nn.dropout(x, keep_prob=self.keep_prob)
+        x = self.get_dilated_conv(x, filter_size=(4, 1, 64, 64), dilations=(32, 1), scope_name='conv6')
+
+        # x = self.get_dilated_conv(self.data, filter_size=(filter_size, 1, 8, 32),
+        # dilations=(1, 1), scope_name='conv0')
+        # x = self.get_res_unit(x, fil_size=filter_size, filter_sizes=(32, 32, 32),
+        #                       in_dilation=1, out_dilation=1, scope_name='conv1')
+        # x = self.get_res_unit(x, fil_size=filter_size, filter_sizes=(32, 32, 32),
+        #                       in_dilation=2, out_dilation=2, scope_name='conv2')
+        # x = self.get_res_unit(x, fil_size=filter_size, filter_sizes=(32, 32, 32),
+        #                       in_dilation=4, out_dilation=4, scope_name='conv3')
+        # x = self.get_res_unit(x, fil_size=filter_size, filter_sizes=(32, 32, 32),
+        #                       in_dilation=8, out_dilation=8, scope_name='conv4')
+        # x = self.get_res_unit(x, fil_size=filter_size, filter_sizes=(32, 32, 32),
+        #                       in_dilation=16, out_dilation=16, scope_name='conv5')
+        # x = self.get_res_unit(x, fil_size=filter_size, filter_sizes=(32, 32, 32),
+        #                       in_dilation=32, out_dilation=32, scope_name='conv6')
+
+        x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 6, 1, 64])
+        x = tf.reshape(x, [-1, 6 * 64])
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         x = slim.fully_connected(x, 512, activation_fn=tf.nn.relu, scope='fc1')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
@@ -149,13 +156,18 @@ class DilatedCNN(AbstractModel):
                       self.keep_prob: 1.0,
                       self.norm: False}
 
-            val_mse, train_mae = self.sess.run([self.loss, self.mae], feed_dict=fd_val)
+            val_mse, val_mae, val_preds = self.sess.run([self.loss, self.mae, self.predictions],
+                                                        feed_dict=fd_val)
+
+            mse = mean_squared_error(y_val, val_preds)
+            mae = mean_absolute_error(y_val, val_preds)
 
             print('epoch {:4d}: train mse: {:.3f}, '
-                  'val mse: {:.3f}, val mae: {:.3f}. '
+                  'val mse: {:.3f}, val mae: {:.3f}, _mse: {:.3f}, _mae: {:.3f}'
                   'Elapsed time {:.1f} s'.format(epoch,
                                                  train_mse,
-                                                 val_mse, train_mae,
+                                                 val_mse, val_mae,
+                                                 mse, mae,
                                                  time.time() - start_time))
 
     def predict(self, x):
