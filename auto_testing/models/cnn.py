@@ -54,7 +54,7 @@ class DilatedCNN(AbstractModel):
             logits = tf.nn.convolution(input_tensor, conv_filter, padding='SAME',
                                        strides=strides, dilation_rate=dilations)
 
-            activations = tf.nn.relu(logits + b)
+            activations = tf.nn.selu(logits + b)
             return activations
 
     def add_normalizer(self, input_tensor, drop=False):
@@ -108,7 +108,7 @@ class DilatedCNN(AbstractModel):
         x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 6, 1, 64])
         x = tf.reshape(x, [-1, 6 * 64])
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
-        x = slim.fully_connected(x, 512, activation_fn=tf.nn.relu, scope='fc1')
+        x = slim.fully_connected(x, 512, activation_fn=tf.nn.selu, scope='fc1')
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
         self.predictions = slim.fully_connected(x, self.pred_length,
                                                 activation_fn=None, scope='final')
@@ -163,7 +163,7 @@ class DilatedCNN(AbstractModel):
             mae = mean_absolute_error(y_val, val_preds)
 
             print('epoch {:4d}: train mse: {:.3f}, '
-                  'val mse: {:.3f}, val mae: {:.3f}, _mse: {:.3f}, _mae: {:.3f}'
+                  'val mse: {:.3f}, val mae: {:.3f}, _mse: {:.3f}, _mae: {:.3f}, '
                   'Elapsed time {:.1f} s'.format(epoch,
                                                  train_mse,
                                                  val_mse, val_mae,

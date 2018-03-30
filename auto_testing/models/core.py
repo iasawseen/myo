@@ -26,6 +26,13 @@ def train_model(xys, model_cls, batch_size, num_epochs):
     model = model_cls(x_train, y_train)
     model.fit((x_train, y_train), (x_val, y_val), batch_size=batch_size, num_epochs=num_epochs)
 
+    y_test_pred = model.predict(x_test)
+
+    mse = mean_squared_error(y_test, y_test_pred)
+    mae = mean_absolute_error(y_test, y_test_pred)
+
+    print('inside train_model, test mse: {mse}, test mae: {mae}'.format(mse=mse, mae=mae))
+
     return x_test, y_test, model
 
 
