@@ -4,7 +4,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 class AbstractModel(metaclass=ABCMeta):
     @abstractmethod
-    def fit(self, train, val, batch_size, num_epochs):
+    def fit(self, train, val, test, batch_size, num_epochs):
         pass
 
     @abstractmethod
@@ -24,7 +24,8 @@ def train_model(xys, model_cls, batch_size, num_epochs):
     x_train, x_val, x_test, y_train, y_val, y_test = xys
 
     model = model_cls(x_train, y_train)
-    model.fit((x_train, y_train), (x_val, y_val), batch_size=batch_size, num_epochs=num_epochs)
+    model.fit((x_train, y_train), (x_val, y_val), (x_test, y_test),
+              batch_size=batch_size, num_epochs=num_epochs)
 
     y_test_pred = model.predict(x_test)
 

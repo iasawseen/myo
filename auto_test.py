@@ -22,7 +22,7 @@ else:
 def generate_file_paths(dir_name):
     filter_fns = (
         partial(utility.is_file_path_valid, code_index=0, valid_codes=['00']),
-        partial(utility.is_file_path_valid, code_index=1, valid_codes=['0']),
+        # partial(utility.is_file_path_valid, code_index=1, valid_codes=['0']),
     )
     filter_file_paths_chain = (partial(utility.filter_file_paths, filter_fn=filter_fn)
                                for filter_fn in filter_fns)
@@ -54,7 +54,7 @@ def transform_file_paths(file_paths):
 
 
 def train_test(xys):
-    train_fn = partial(core.train_model, model_cls=cnn.DilatedCNN, batch_size=1024, num_epochs=64)
+    train_fn = partial(core.train_model, model_cls=cnn.DilatedCNN, batch_size=1024, num_epochs=16)
     test_metrics = utility.pipe(xys, funcs=(train_fn, core.test_model))
     return test_metrics
 

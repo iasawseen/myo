@@ -119,9 +119,10 @@ class DilatedCNN(AbstractModel):
         diff = tf.abs(tf.subtract(self.target, self.predictions))
         self.mae = tf.reduce_mean(diff)
 
-    def fit(self, train, val, batch_size, num_epochs):
+    def fit(self, train, val, test, batch_size, num_epochs):
         x_train, y_train = train
         x_val, y_val = val
+        x_test, y_test = test
 
         config = tf.ConfigProto(allow_soft_placement=True)
         self.sess = tf.Session(config=config)
@@ -170,6 +171,17 @@ class DilatedCNN(AbstractModel):
                                                  mse, mae,
                                                  time.time() - start_time))
 
+        fd_test = {self.data: x_test,
+                   self.keep_prob: 1.0,
+                   self.norm: False}
+
+        y_test_pred = self.sess.run(self.predictions, feed_dict=fd_test)
+
+        mse = mean_squared_error(y_test, y_test_pred)
+        mae = mean_absolute_error(y_test, y_test_pred)
+
+        print('inside fit, test mse: {mse}, test mae: {mae}'.format(mse=mse, mae=mae))
+        
     def predict(self, x):
         return self.sess.run(self.predictions, {self.data: x, self.keep_prob: 1.0, self.norm: False})
 
