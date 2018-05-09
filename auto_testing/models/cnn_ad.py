@@ -16,21 +16,25 @@ if not platform == 'win32':
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
-class DilatedCNN(AbstractModel):
+class DilatedCNNAD(AbstractModel):
     def __init__(self, x, y):
         self.length = x.shape[1]
         self.features = x.shape[3]
         self.pred_length = y.shape[1]
+        self.classes_num = 10
         self.hiddens = [512, 512, 512]
         self.keep_prob = None
         self.layers = len(self.hiddens)
         self.predictions = None
-        self.loss = None
+        self.reg_loss = None
+        self.class_loss = None
+        self.class_preds = None
         self.train_op = None
         self.mae = None
         self.sess = None
         self.data = None
         self.target = None
+        self.class_target = None
         self.lr = None
         self.norm = None
         self.ranges = None
@@ -45,6 +49,7 @@ class DilatedCNN(AbstractModel):
         self.data = tf.placeholder(tf.float32,
                                    [None, self.length, 1, self.features])
         self.target = tf.placeholder(tf.float32, [None, self.pred_length])
+        self.class_target = tf.placeholder(tf.float32, [None, self.classes_num])
         self.ranges = tf.placeholder(tf.float32, [self.pred_length])
         self.lr = tf.placeholder(tf.float32)
         self.keep_prob = tf.placeholder(tf.float32)
@@ -117,9 +122,9 @@ class DilatedCNN(AbstractModel):
         # x = tf.nn.dropout(x, keep_prob=self.keep_prob)
 
         x = tf.slice(x, [0, 0, 0, 0], [tf.shape(x)[0], 12, 1, filters])
-        x = tf.reshape(x, [-1, 12 * filters])
+        features = tf.reshape(x, [-1, 12 * filters])
 
-        x = slim.fully_connected(x, 256, activation_fn=tf.nn.relu, scope='fc1')
+        x = slim.fully_connected(features, 256, activation_fn=tf.nn.relu, scope='fc1')
         x = tf.contrib.layers.batch_norm(x, center=True, scale=True, is_training=self.norm)
         x = tf.nn.dropout(x, keep_prob=self.keep_prob)
 
@@ -130,11 +135,19 @@ class DilatedCNN(AbstractModel):
         self.predictions = slim.fully_connected(x, self.pred_length,
                                                 activation_fn=None, scope='final')
 
-        self.loss = tf.losses.mean_squared_error(self.target, self.predictions)
+        self.reg_loss = tf.losses.mean_squared_error(self.target, self.predictions)
+
+        x_ad = slim.fully_connected(features, 256, activation_fn=tf.nn.relu, scope='fc1_ad')
+        x_ad = tf.contrib.layers.batch_norm(x_ad, center=True, scale=True, is_training=self.norm)
+
+        self.class_preds = slim.fully_connected(x_ad, self.classes_num,
+                                                activation_fn=None, scope='classification')
+
+        self.class_loss = tf.losses.softmax_cross_entropy(self.class_target, self.class_preds)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
-            self.train_op = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
+            self.train_op = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(self.reg_loss)
 
         diff = tf.abs(tf.subtract(self.target, self.predictions))
         self.mae = tf.reduce_mean(diff)
@@ -173,7 +186,7 @@ class DilatedCNN(AbstractModel):
                       self.ranges: y_ranges,
                       self.lr: get_lr(epoch), self.keep_prob: 0.4,
                       self.norm: 1}
-                loss, _ = self.sess.run([self.loss, self.train_op], feed_dict=fd)
+                loss, _ = self.sess.run([self.reg_loss, self.train_op], feed_dict=fd)
                 loss_sum += loss
                 loss_qty += 1
 
@@ -189,7 +202,7 @@ class DilatedCNN(AbstractModel):
                       self.keep_prob: 1.0,
                       self.norm: 0}
 
-            val_mse, val_mae, val_preds = self.sess.run([self.loss, self.mae, self.predictions],
+            val_mse, val_mae, val_preds = self.sess.run([self.reg_loss, self.mae, self.predictions],
                                                         feed_dict=fd_val)
 
             y_val_norm = y_val / val_ranges
