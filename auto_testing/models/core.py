@@ -29,13 +29,10 @@ class AbstractModel(metaclass=ABCMeta):
         pass
 
 
-def train_model(xys, model_cls, batch_size, num_epochs):
+def train_model(xys, model_cls, batch_size, num_epochs, adaptation):
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = xys
 
-    print('printing shape')
-    print(x_train.shape, x_val.shape, x_test.shape)
-
-    model = model_cls(x_train, y_train)
+    model = model_cls(x_train, y_train, adaptation)
     model.fit((x_train, y_train), (x_val, y_val), (x_test, y_test),
               batch_size=batch_size, num_epochs=num_epochs)
 
@@ -71,6 +68,8 @@ def train_rf(xys):
 
 def test_model(pack):
     x_test, y_test, model = pack
+
+    y_test = y_test[:, :-1]
 
     y_test_pred = model.predict(x_test)
 

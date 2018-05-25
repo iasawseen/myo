@@ -63,7 +63,9 @@ class AddWindowToXYTestCase(unittest.TestCase):
                       [6],
                       [8]])
 
-        x_windowed, y_windowed = transformers.add_window_to_xy((x, y), window=1)
+        dummy = None
+
+        x_windowed, (y_windowed, dummy) = transformers.add_window_to_xy((x, (y, dummy)), window=1)
 
         x_expected = np.array([[[1]],
                                [[3]],
@@ -86,7 +88,9 @@ class AddWindowToXYTestCase(unittest.TestCase):
                       [6],
                       [8]])
 
-        x_windowed, y_windowed = transformers.add_window_to_xy((x, y), window=2)
+        dummy = None
+
+        x_windowed, (y_windowed, dummy) = transformers.add_window_to_xy((x, (y, dummy)), window=2)
 
         x_expected = np.array([[[1],
                                 [3]],
@@ -115,7 +119,9 @@ class AddWindowToXYTestCase(unittest.TestCase):
                       [6, 7, 8],
                       [8, 9, 10]])
 
-        x_windowed, y_windowed = transformers.add_window_to_xy((x, y), window=2)
+        dummy = None
+
+        x_windowed, (y_windowed, dummy) = transformers.add_window_to_xy((x, (y, dummy)), window=2)
 
         x_expected = np.array([[[1, 2],
                                 [3, 4]],

@@ -56,6 +56,21 @@ class IsFilePathValidWith4CodeTestCase(unittest.TestCase):
         self.assertFalse(result)
 
 
+class EncodeFilePathsTestCase(unittest.TestCase):
+    def simple_test(self):
+        file_paths = [
+            '..\\processed_data\\00\\processed_00_0_4_0.pickle',
+            '..\\processed_data\\00\\processed_00_0_0_0.pickle',
+            '..\\processed_data\\00\\processed_00_1_0_0.pickle',
+            '..\\processed_data\\00\\processed_00_0_2_0.pickle'
+        ]
+
+        encoder = utility.get_encoder_for_file_paths(file_paths)
+
+        codes = [encoder(file_path) for file_path in file_paths]
+        self.assertEqual(4, len(set(codes)))
+
+
 class PipeTestCase(unittest.TestCase):
     def test_emtpy_funcs(self):
         init_data = 1

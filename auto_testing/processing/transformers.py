@@ -31,7 +31,7 @@ def average_filter_angles(xy, window):
 
 
 def add_window_to_xy(xy, window):
-    x, y = xy
+    x, (y, y_label) = xy
     x_windowed = list()
     y_windowed = list()
     for i in range(0, x.shape[0] - window):
@@ -39,7 +39,7 @@ def add_window_to_xy(xy, window):
         x_windowed.append(x[x_indices, :])
         y_windowed.append(y[x_indices[-1], :])
 
-    return np.array(x_windowed), np.array(y_windowed)
+    return np.array(x_windowed), (np.array(y_windowed), y_label)
 
 
 def reshape_x_for_dilated(xy):
@@ -68,7 +68,7 @@ def process_iterable(iterable, func):
 
 
 def mimic_old_y(xy):
-    x, y = xy
+    x, (y, y_label) = xy
     indices = [4, *range(6, 8),
                8, *range(11, 13),
                13, *range(16, 18),
@@ -76,14 +76,14 @@ def mimic_old_y(xy):
                23, *range(26, 28)]
     y_ = y[:, indices]
     # print(y_.shape)
-    return x, y_
+    return x, (y_, y_label)
 
 
 def shift(xy, shift_size=16):
-    x, y = xy
+    x, (y, y_label) = xy
     x_shifted = x[:-shift_size, :]
     y_shifted = y[shift_size:, :]
-    return x_shifted, y_shifted
+    return x_shifted, (y_shifted, y_label)
 
 
 def low_pass_filter(xy):
@@ -104,7 +104,7 @@ def low_pass_filter(xy):
         x_low_pass = np.vstack(data_low_passes).T
         return x_low_pass
 
-    x, y = xy
+    x, (y, y_label) = xy
 
     order = 6
     fs = 200
@@ -112,7 +112,7 @@ def low_pass_filter(xy):
     y_cutoff = 4
     x_ = _low_pass_filter(x, x_cutoff, fs, order)
     y_ = _low_pass_filter(y, y_cutoff, fs, order)
-    return x_, y_
+    return x_, (y_, y_label)
 
 
 def merge_xys(xys):
@@ -134,8 +134,28 @@ def merge_xys(xys):
     return merged
 
 
+def merge_xys_test(xys):
+    # input
+    # xys = [(x1, (y1, y_label1)),
+    #        (x2, (y2, y_label2)), ...]
+    # output
+    # (x_train, y_train)
+
+    result = [[], []]
+
+    for xy in xys:
+        result[0].append(xy[0])
+        y, y_label = xy[1]
+        y_label_arr = np.full(shape=y.shape[0], fill_value=y_label).reshape((-1, 1))
+        result[1].append(np.hstack((y, y_label_arr)))
+
+    X = np.vstack(result[0])
+    y = np.vstack(result[1])
+    return X, y
+
+
 def split_by_chunks(xy, val_test_size=0.25, chunks=20, overlapping=32):
-    x, y = xy
+    x, (y, y_label) = xy
     chunk_size = int(x.shape[0] * val_test_size / chunks)
     offset = int(x.shape[0] / chunks)
     borders = []
@@ -172,4 +192,14 @@ def split_by_chunks(xy, val_test_size=0.25, chunks=20, overlapping=32):
     x_train = np.delete(x, indices_to_delete, axis=0)
     y_train = np.delete(y, indices_to_delete, axis=0)
 
-    return (x_train, y_train), (x_val, y_val), (x_test, y_test)
+    y_train_label = np.full(shape=y_train.shape[0], fill_value=y_label).reshape((-1, 1))
+    y_val_label = np.full(shape=y_val.shape[0], fill_value=y_label).reshape((-1, 1))
+    y_test_label = np.full(shape=y_test.shape[0], fill_value=y_label).reshape((-1, 1))
+
+    y_train = np.concatenate((y_train, y_train_label), axis=1)
+    y_val = np.concatenate((y_val, y_val_label), axis=1)
+    y_test = np.concatenate((y_test, y_test_label), axis=1)
+
+    return (x_train, y_train), \
+           (x_val, y_val), \
+           (x_test, y_test)

@@ -171,11 +171,16 @@ def _interpolate_angles(angles):
 
 
 def pre_process_single(file_path):
+    # print(file_path, ' starts processing')
+
     emg_data, orientation_data, angles = read_from_file_path(file_path)
 
     while True:
         emg_length = len(emg_data)
-        emg_data, angles = _trim_to_sync(emg_data, angles, 16, access_fn=lambda x, i: x[i][0])
+        try:
+            emg_data, angles = _trim_to_sync(emg_data, angles, 16, access_fn=lambda x, i: x[i][0])
+        except IndexError:
+            print(file_path, ' Index error')
 
         if emg_length == len(emg_data):
             break
@@ -211,6 +216,7 @@ def pre_process_single(file_path):
     new_file_path = os.path.join(new_parent_dir, new_filename)
 
     write_to_file_path(new_file_path, (x, y))
+    # print(file_path, ' completed processing')
 
 
 def launch_pre_process(file_paths):
